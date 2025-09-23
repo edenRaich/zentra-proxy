@@ -6,6 +6,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
+app.get('/', (req, res) => {
+  res.send('Zentra Proxy Server is running.');
+});
+
 app.get('/zentra', async (req, res) => {
   try {
     const url = 'https://zentracloud.com/api/v3/get_readings/?device_sn=z6-32482';

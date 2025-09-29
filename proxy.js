@@ -12,17 +12,30 @@ app.get('/', (req, res) => {
 
 app.get('/zentra', async (req, res) => {
   try {
-    const url = 'https://zentracloud.com/api/v3/get_readings/?device_sn=z6-32482';
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': 'Token d445bff30fd09944398c70521da24e19f6c11abf'
-      }
-    });
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'Failed to fetch from ZentraCloud' });
+    const deviceSNs = req.query.device_sn;
+    if (!deviceSNs) {
+      return res.status(400).json({ error: 'Missing device_sn query parameter' });
     }
-    const data = await response.json();
-    res.json(data);
+
+    const deviceList = deviceSNs.split(',');
+
+    const fetches = deviceList.map(async (sn) => {
+      const url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${encodeURIComponent(sn.trim())}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': 'Token d445bff30fd09944398c70521da24e19f6c11abf'
+        }
+      });
+      if (!response.ok) {
+        return { device_sn: sn, error: `Failed to fetch data (status ${response.status})` };
+      }
+      const data = await response.json();
+      return { device_sn: sn, data };
+    });
+
+    const results = await Promise.all(fetches);
+
+    res.json({ devices: results });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

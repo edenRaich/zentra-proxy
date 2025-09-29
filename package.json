@@ -1,46 +1,30 @@
-import express from 'express';
-import cors from 'cors';
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(cors());
-
-app.get('/', (req, res) => {
-  res.send('Zentra Proxy Server is running.');
-});
-
-app.get(['/zentra', '/zentra/'], async (req, res) => {
-  try {
-    const deviceSNs = req.query.device_sn;
-    if (!deviceSNs) {
-      return res.status(400).json({ error: 'Missing device_sn query parameter' });
-    }
-
-    const deviceList = deviceSNs.split(',');
-
-    const fetches = deviceList.map(async (sn) => {
-      const url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${encodeURIComponent(sn.trim())}`;
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': 'Token d445bff30fd09944398c70521da24e19f6c11abf'
-        }
-      });
-      if (!response.ok) {
-        return { device_sn: sn, error: `Failed to fetch data (status ${response.status})` };
-      }
-      const data = await response.json();
-      return { device_sn: sn, data };
-    });
-
-    const results = await Promise.all(fetches);
-
-    res.json({ devices: results });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+ "name": "zentra-proxy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "type": "module",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2"
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`Proxy server running at http://localhost:${PORT}/zentra`);
-});
+    "express": "^5.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/edenRaich/zentra-proxy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/edenRaich/zentra-proxy/issues"
+  },
+  "homepage": "https://github.com/edenRaich/zentra-proxy#readme"
+}

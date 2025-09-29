@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
@@ -10,7 +10,7 @@ app.get('/', (req, res) => {
   res.send('Zentra Proxy Server is running.');
 });
 
-app.get('/zentra', async (req, res) => {
+app.get(['/zentra', '/zentra/'], async (req, res) => {
   try {
     const deviceSNs = req.query.device_sn;
     if (!deviceSNs) {

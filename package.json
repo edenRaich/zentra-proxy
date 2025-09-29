@@ -1,7 +1,7 @@
- "name": "zentra-proxy",
+{
+  "name": "zentra-proxy",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "main": "proxy.js",
   "scripts": {
     "start": "node proxy.js",
@@ -10,13 +10,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "type": "module",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "node-fetch": "^3.3.2"
-  }
     "express": "^5.1.0"
   },
   "repository": {

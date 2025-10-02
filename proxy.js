@@ -33,8 +33,8 @@ app.get('/zentra', async (req, res) => {
         return { device_sn: sn, error: 'Failed to fetch' };
       }
       const data = await response.json();
-      // You can adjust this to extract the value you want for the chart
-      return { device_sn: sn, value: data.value || null };
+      // Return all fields from Zentra API, plus device_sn
+      return { device_sn: sn, ...data };
     }));
 
     res.json(results);

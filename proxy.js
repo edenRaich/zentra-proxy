@@ -1,30 +1,14 @@
-import express from 'express';
-import cors from 'cors';
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Enable CORS for all origins
-app.use(cors({
-  origin: '*'
-}));
-
-app.get('/', (req, res) => {
-  res.send('Zentra Proxy Server is running.');
-});
-
 app.get('/zentra', async (req, res) => {
   try {
     let deviceSNs = req.query.device_sn;
     if (!deviceSNs) {
       return res.status(400).json({ error: 'device_sn query parameter is required' });
     }
-    // Ensure deviceSNs is always an array
     if (!Array.isArray(deviceSNs)) {
       deviceSNs = [deviceSNs];
     }
 
-    // Fetch data for each device_sn in parallel
+    // Fetch each device_sn separately
     const results = await Promise.all(deviceSNs.map(async (sn) => {
       const url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${sn}`;
       const response = await fetch(url, {
@@ -33,7 +17,8 @@ app.get('/zentra', async (req, res) => {
         }
       });
       if (!response.ok) {
-        return { device_sn: sn, error: 'Failed to fetch' };
+        const text = await response.text();
+        return { device_sn: sn, error: 'Failed to fetch', status: response.status, body: text };
       }
       const data = await response.json();
       return { device_sn: sn, ...data };
@@ -43,8 +28,4 @@ app.get('/zentra', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`Proxy server running at http://localhost:${PORT}/zentra`);
 });

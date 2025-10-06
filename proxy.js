@@ -63,6 +63,7 @@ app.get('/zentra', async (req, res) => {
       deviceSNs = deviceSNs.split(',').map(sn => sn.trim()).filter(Boolean);
     }
     const results = await Promise.all(deviceSNs.map(fetchAllPages));
+    // *** THIS IS THE CRUCIAL LINE ***
     res.json({ devices: results });
   } catch (err) {
     res.status(500).json({ error: err.message });

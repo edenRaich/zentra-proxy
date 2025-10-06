@@ -11,9 +11,9 @@ app.use(cors({
   origin: ['https://edenraich.github.io', 'http://localhost:3000']
 }));
 
-// Fetch only the first page for each device
-async function fetchAllPages(sn) {
-  const url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${encodeURIComponent(sn)}`;
+// Fetch only the first page for each device, with configurable per_page
+async function fetchAllPages(sn, perPage) {
+  const url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${encodeURIComponent(sn)}&per_page=${perPage}`;
   const response = await fetch(url, {
     headers: {
       'Authorization': 'Token d445bff30fd09944398c70521da24e19f6c11abf'
@@ -34,13 +34,14 @@ async function fetchAllPages(sn) {
 app.get('/zentra', async (req, res) => {
   try {
     let deviceSNs = req.query.device_sn;
+    let perPage = req.query.per_page || 500;
     if (!deviceSNs) {
       return res.status(400).json({ error: 'device_sn query parameter is required' });
     }
     if (typeof deviceSNs === 'string') {
       deviceSNs = deviceSNs.split(',').map(sn => sn.trim()).filter(Boolean);
     }
-    const results = await Promise.all(deviceSNs.map(fetchAllPages));
+    const results = await Promise.all(deviceSNs.map(sn => fetchAllPages(sn, perPage)));
     res.json({ devices: results });
   } catch (err) {
     res.status(500).json({ error: err.message });

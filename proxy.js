@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+// If using Node <18, uncomment the next line and install node-fetch
+// import fetch from 'node-fetch';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,52 +11,27 @@ app.use(cors({
   origin: ['https://edenraich.github.io', 'http://localhost:3000']
 }));
 
-// Helper to fetch all pages for a device
+// Fetch only the first page for each device
 async function fetchAllPages(sn) {
-  let url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${encodeURIComponent(sn)}`;
-  let allData = {};
-  let pagination = null;
-  let firstResponse = null;
-
-  while (url) {
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': 'Token d445bff30fd09944398c70521da24e19f6c11abf'
-      }
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      return { device_sn: sn, error: 'Failed to fetch', status: response.status, body: text };
+  const url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${encodeURIComponent(sn)}`;
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': 'Token d445bff30fd09944398c70521da24e19f6c11abf'
     }
-    const data = await response.json();
-    if (!firstResponse) {
-      firstResponse = data;
-      pagination = data.pagination;
-    }
-    // Merge sensor readings
-    for (const [sensor, arr] of Object.entries(data.data || {})) {
-      if (!allData[sensor]) allData[sensor] = [];
-      arr.forEach((sensorObj, idx) => {
-        if (!allData[sensor][idx]) allData[sensor][idx] = {
-          metadata: sensorObj.metadata,
-          readings: []
-        };
-        allData[sensor][idx].readings = allData[sensor][idx].readings.concat(sensorObj.readings || []);
-      });
-    }
-    url = data.pagination && data.pagination.next_url ? data.pagination.next_url : null;
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    return { device_sn: sn, error: 'Failed to fetch', status: response.status, body: text };
   }
+  const data = await response.json();
   return {
     device_sn: sn,
-    pagination,
-    data: allData
+    pagination: data.pagination,
+    data: data.data
   };
 }
 
 app.get('/zentra', async (req, res) => {
-  // Logging line to track all incoming requests
-  console.log('Received request to /zentra:', req.query, 'at', new Date().toISOString());
-
   try {
     let deviceSNs = req.query.device_sn;
     if (!deviceSNs) {

@@ -1,7 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-// If using Node <18, uncomment the next line and install node-fetch
-// import fetch from 'node-fetch';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,6 +52,9 @@ async function fetchAllPages(sn) {
 }
 
 app.get('/zentra', async (req, res) => {
+  // Logging line to track all incoming requests
+  console.log('Received request to /zentra:', req.query, 'at', new Date().toISOString());
+
   try {
     let deviceSNs = req.query.device_sn;
     if (!deviceSNs) {
@@ -63,7 +64,6 @@ app.get('/zentra', async (req, res) => {
       deviceSNs = deviceSNs.split(',').map(sn => sn.trim()).filter(Boolean);
     }
     const results = await Promise.all(deviceSNs.map(fetchAllPages));
-    // *** THIS IS THE CRUCIAL LINE ***
     res.json({ devices: results });
   } catch (err) {
     res.status(500).json({ error: err.message });

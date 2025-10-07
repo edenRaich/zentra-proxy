@@ -1,7 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-// If using Node <18, uncomment the next line and install node-fetch
-// import fetch from 'node-fetch';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,9 +9,12 @@ app.use(cors({
   origin: ['https://edenraich.github.io', 'http://localhost:3000']
 }));
 
-// Fetch only the first page for each device, with configurable per_page
-async function fetchAllPages(sn, perPage) {
-  const url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${encodeURIComponent(sn)}&per_page=${perPage}`;
+// Fetch only the first page for each device, with configurable per_page and start_date
+async function fetchFirstPage(sn, perPage, startDate) {
+  let url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${encodeURIComponent(sn)}&per_page=${perPage}`;
+  if (startDate) {
+    url += `&start_date=${encodeURIComponent(startDate)}`;
+  }
   const response = await fetch(url, {
     headers: {
       'Authorization': 'Token d445bff30fd09944398c70521da24e19f6c11abf'
@@ -35,13 +36,20 @@ app.get('/zentra', async (req, res) => {
   try {
     let deviceSNs = req.query.device_sn;
     let perPage = req.query.per_page || 500;
+    let startDate = req.query.start_date;
+
     if (!deviceSNs) {
       return res.status(400).json({ error: 'device_sn query parameter is required' });
     }
+    // Accept comma-separated SNs or multiple device_sn params
     if (typeof deviceSNs === 'string') {
       deviceSNs = deviceSNs.split(',').map(sn => sn.trim()).filter(Boolean);
     }
-    const results = await Promise.all(deviceSNs.map(sn => fetchAllPages(sn, perPage)));
+
+    // Call the Zentra API once per SN and aggregate results
+    const results = await Promise.all(
+      deviceSNs.map(sn => fetchFirstPage(sn, perPage, startDate))
+    );
     res.json({ devices: results });
   } catch (err) {
     res.status(500).json({ error: err.message });

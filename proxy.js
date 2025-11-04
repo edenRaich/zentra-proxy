@@ -9,7 +9,47 @@ app.use(cors({
   origin: ['https://edenraich.github.io', 'http://localhost:3000']
 }));
 
-// Fetch only the first page for each device, with configurable per_page and start_date
+// --- CACHE & CONCURRENCY CONTROL ---
+const DEVICE_TTL_MS = 60 * 1000;
+const deviceCache = new Map(); // device_sn -> { data, fetchedAt }
+const inFlight = new Map();    // device_sn -> Promise
+
+function isFresh(entry) {
+  return entry && (Date.now() - entry.fetchedAt) < DEVICE_TTL_MS;
+}
+
+async function getDeviceDataWithCache(sn, perPage, startDate) {
+  // 1. Serve from fresh cache
+  const cached = deviceCache.get(sn);
+  if (isFresh(cached)) {
+    return cached.data;
+  }
+
+  // 2. Await in-flight fetch if present
+  if (inFlight.has(sn)) {
+    try {
+      return await inFlight.get(sn);
+    } catch (e) {
+      // If in-flight failed, fall through to new fetch
+    }
+  }
+
+  // 3. Start new fetch, mark as in-flight
+  const p = (async () => {
+    try {
+      const data = await fetchFirstPage(sn, perPage, startDate);
+      deviceCache.set(sn, { data, fetchedAt: Date.now() });
+      return data;
+    } finally {
+      inFlight.delete(sn);
+    }
+  })();
+
+  inFlight.set(sn, p);
+  return p;
+}
+
+// --- ORIGINAL FETCH LOGIC (unchanged) ---
 async function fetchFirstPage(sn, perPage, startDate) {
   let url = `https://zentracloud.com/api/v3/get_readings/?device_sn=${encodeURIComponent(sn)}&per_page=${perPage}`;
   if (startDate) {
@@ -32,6 +72,7 @@ async function fetchFirstPage(sn, perPage, startDate) {
   };
 }
 
+// --- ROUTE: use cache-aware fetch ---
 app.get('/zentra', async (req, res) => {
   try {
     let deviceSNs = req.query.device_sn;
@@ -46,9 +87,9 @@ app.get('/zentra', async (req, res) => {
       deviceSNs = deviceSNs.split(',').map(sn => sn.trim()).filter(Boolean);
     }
 
-    // Call the Zentra API once per SN and aggregate results
+    // Use cache/concurrency wrapper
     const results = await Promise.all(
-      deviceSNs.map(sn => fetchFirstPage(sn, perPage, startDate))
+      deviceSNs.map(sn => getDeviceDataWithCache(sn, perPage, startDate))
     );
     res.json({ devices: results });
   } catch (err) {
